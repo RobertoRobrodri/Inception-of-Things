@@ -1,14 +1,5 @@
 #! /bin/sh
 
-# Configure 2GB swap for better memory management
-echo "Configuring swap..."
-dd if=/dev/zero of=/swapfile bs=1M count=2048
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo "/swapfile none swap sw 0 0" >> /etc/fstab
-echo "Swap configured successfully"
-
 # Install docker
 echo "Installing Docker"
 apk update && apk add docker

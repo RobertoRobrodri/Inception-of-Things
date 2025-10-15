@@ -2,14 +2,23 @@ Vagrant.configure("2") do |config|
 
   config.vm.box = "debian/bookworm64"
 
+  # Carpetas compartidas - montar p1, p2 y p3 dentro de /IoT en la VM
+  config.vm.synced_folder "./p1", "/IoT/p1", type: "virtualbox", create: true
+  config.vm.synced_folder "./p2", "/IoT/p2", type: "virtualbox", create: true
+  config.vm.synced_folder "./p3", "/IoT/p3", type: "virtualbox", create: true
+
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = 10240
+    vb.memory = 5096
     vb.cpus   = 6
 
     vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
     vb.customize ["modifyvm", :id, "--hwvirtex", "on"]
     vb.customize ["modifyvm", :id, "--vtxvpid", "on"]
     vb.customize ["modifyvm", :id, "--vtxux", "on"]
+
+
+
+    
     vb.customize ["modifyvm", :id, "--pae", "on"]
 
     vb.name = "debian-host-nested"
@@ -50,9 +59,24 @@ Vagrant.configure("2") do |config|
     apt-get update
     apt-get install -y virtualbox-7.0
 
+    # Verificar que los headers estén instalados correctamente
+    KERNEL_VERSION=$(uname -r)
+    echo "Kernel actual: ${KERNEL_VERSION}"
+
+    if [ ! -d "/lib/modules/${KERNEL_VERSION}/build" ]; then
+      echo "Headers del kernel no encontrados, instalando..."
+      apt-get install -y linux-headers-${KERNEL_VERSION}
+    fi
+
     # Compilar módulos de VirtualBox
+    echo "======================================="
     echo "Compilando módulos de VirtualBox..."
-    /sbin/vboxconfig
+    echo "======================================="
+    /sbin/vboxconfig || {
+      echo "Error en vboxconfig, intentando de nuevo..."
+      apt-get install -y --reinstall linux-headers-${KERNEL_VERSION}
+      /sbin/vboxconfig
+    }
 
     # Añadir usuario vagrant al grupo vboxusers
     usermod -aG vboxusers vagrant

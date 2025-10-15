@@ -21,7 +21,7 @@ echo "Installing k9s"
 apk add k9s
 
 # Create the cluster
-k3d cluster create --agents 3 core -p "8080:8888@loadbalancer" # expose the loadbalancer port 8080 to 8888 to access the dashboard
+k3d cluster create --agents 2 core -p "8080:8888@loadbalancer" # expose the loadbalancer port 8080 to 8888 to access the dashboard
 
 # Create the namespaces
 kubectl create namespace dev
@@ -32,7 +32,7 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 
 # Wait for ArgoCD pods to be ready
 echo "Waiting for ArgoCD pods to be ready..."
-kubectl wait --for=condition=Ready pods --all -n argocd --timeout=600s
+kubectl wait --for=condition=Ready pods --all -n argocd --timeout=1800s
 
 # Set ArgoCD dashboard pass -> holasoyadmin
 sudo kubectl -n argocd patch secret argocd-secret \
@@ -47,6 +47,6 @@ kubectl apply -f /vagrant_shared/deployments/argo.yml
 # ArgoCD will automatically deploy the app from the GitHub repository
 # The app includes: deployment, service, and ingress
 echo "Waiting for ArgoCD to sync the application..."
-kubectl wait --for=condition=Ready pods -l app=app -n dev --timeout=600s
+kubectl wait --for=condition=Ready pods -l app=app -n dev --timeout=1800s
 
 echo "Setup complete! Access the app at http://app.local:8888"

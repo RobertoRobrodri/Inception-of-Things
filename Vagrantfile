@@ -44,9 +44,14 @@ Vagrant.configure("2") do |config|
       qemu-kvm \
       libvirt-daemon-system \
       libvirt-clients \
+      libvirt-dev \
       bridge-utils \
       build-essential \
-      dkms
+      dkms \
+      ruby-dev \
+      libxslt-dev \
+      libxml2-dev \
+      zlib1g-dev
 
     # Actualizar kernel si es necesario
     apt-get install -y linux-image-amd64 linux-headers-amd64

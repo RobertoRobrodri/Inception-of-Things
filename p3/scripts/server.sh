@@ -21,18 +21,38 @@ echo "Installing k9s"
 apk add k9s
 
 # Create the cluster
-k3d cluster create --agents 2 core -p "8080:8888@loadbalancer" # expose the loadbalancer port 8080 to 8888 to access the dashboard
+k3d cluster create --agents 1 core -p "8080:8888@loadbalancer" # expose the loadbalancer port 8080 to 8888 to access the dashboard
 
 # Create the namespaces
 kubectl create namespace dev
 kubectl create namespace argocd
 
-# Apply ArgoCD deployments
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# Download ArgoCD manifest
+echo "Downloading ArgoCD manifest..."
+wget -O /tmp/argocd-install.yaml https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-# Wait for ArgoCD pods to be ready
-echo "Waiting for ArgoCD pods to be ready..."
-kubectl wait --for=condition=Ready pods --all -n argocd --timeout=1800s
+# Deploy ArgoCD components gradually to avoid resource spikes
+echo "Deploying ArgoCD CRDs and ConfigMaps..."
+kubectl apply -n argocd -f /tmp/argocd-install.yaml --selector='!app.kubernetes.io/component'
+sleep 5
+
+echo "Deploying ArgoCD Redis..."
+kubectl apply -n argocd -f /tmp/argocd-install.yaml --selector='app.kubernetes.io/component=redis'
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-redis -n argocd --timeout=300s
+
+echo "Deploying ArgoCD Repo Server..."
+kubectl apply -n argocd -f /tmp/argocd-install.yaml --selector='app.kubernetes.io/component=repo-server'
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=300s
+
+echo "Deploying ArgoCD Application Controller..."
+kubectl apply -n argocd -f /tmp/argocd-install.yaml --selector='app.kubernetes.io/component=application-controller'
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=300s
+
+echo "Deploying ArgoCD Server and remaining components..."
+kubectl apply -n argocd -f /tmp/argocd-install.yaml
+kubectl wait --for=condition=Ready pods --all -n argocd --timeout=600s
+
+echo "ArgoCD deployed successfully!"
 
 # Set ArgoCD dashboard pass -> holasoyadmin
 sudo kubectl -n argocd patch secret argocd-secret \

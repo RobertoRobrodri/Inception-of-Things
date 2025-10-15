@@ -7,8 +7,11 @@ Vagrant.configure("2") do |config|
   config.vm.synced_folder "./p2", "/IoT/p2", type: "virtualbox", create: true
   config.vm.synced_folder "./p3", "/IoT/p3", type: "virtualbox", create: true
 
+  # Port forwarding
+  config.vm.network "forwarded_port", guest: 8888, host: 8888
+
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = 5096
+    vb.memory = 6144
     vb.cpus   = 6
 
     vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]

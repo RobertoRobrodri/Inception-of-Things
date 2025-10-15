@@ -61,13 +61,13 @@ Vagrant.configure("2") do |config|
     usermod -aG kvm vagrant
 
     # Instalar Vagrant
-    VAGRANT_VERSION="2.4.9"
+    VAGRANT_VERSION="2.4.1"
     wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_amd64.deb
     dpkg -i vagrant_${VAGRANT_VERSION}-1_amd64.deb
     rm vagrant_${VAGRANT_VERSION}-1_amd64.deb
 
-    # Instalar plugin de libvirt para Vagrant
-    vagrant plugin install vagrant-libvirt
+    # Instalar plugin de libvirt para Vagrant (versión compatible)
+    vagrant plugin install vagrant-libvirt --plugin-version=0.12.2
 
     # Iniciar y habilitar libvirt
     systemctl enable libvirtd

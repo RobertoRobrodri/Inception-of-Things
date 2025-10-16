@@ -22,7 +22,10 @@ log_info "Using values: ${VALUES}"
 
 helm upgrade --install argocd argo/argo-cd \
   -n argocd \
-  -f "${VALUES}" >/dev/null 2>&1
+  -f "${VALUES}" \
+  --wait \
+  --timeout 20m \
+  --wait-for-jobs >/dev/null 2>&1
 
 log_success "ArgoCD deployed successfully"
 

@@ -36,7 +36,10 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set global.pod.restartPolicy=Always \
   --set gitlab.webservice.deployment.restartPolicy=Always \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always >/dev/null 2>&1
+  --set gitlab.gitaly.deployment.restartPolicy=Always \
+  --wait \
+  --timeout 30m \
+  --wait-for-jobs >/dev/null 2>&1
 
 log_success "GitLab helm chart deployed"
 

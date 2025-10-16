@@ -67,6 +67,15 @@ kubectl apply -f /vagrant_shared/deployments/argo.yml
 # ArgoCD will automatically deploy the app from the GitHub repository
 # The app includes: deployment, service, and ingress
 echo "Waiting for ArgoCD to sync the application..."
+
+# Wait for the deployment to be created by ArgoCD
+echo "Waiting for deployment to be created..."
+until kubectl get deployment app -n dev &> /dev/null; do
+  echo "Deployment not yet created, waiting..."
+  sleep 5
+done
+
+echo "Deployment created, waiting for pods to be ready..."
 kubectl wait --for=condition=Ready pods -l app=app -n dev --timeout=1800s
 
 echo "Setup complete! Access the app at http://app.local:8888"

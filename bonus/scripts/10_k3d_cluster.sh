@@ -25,9 +25,22 @@ log_success "kubectl client connected to cluster"
 
 # Wait for traefik to be available
 log_info "Waiting for Traefik to be ready..."
-sleep 20
-if kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=traefik -n kube-system --timeout=300s >/dev/null 2>&1; then
-  log_success "Traefik Ingress Controller ready"
+
+# Wait for traefik pod to exist first
+RETRY=0
+MAX_RETRIES=60
+until kubectl get pod -l app.kubernetes.io/name=traefik -n kube-system >/dev/null 2>&1 || [ $RETRY -eq $MAX_RETRIES ]; do
+  sleep 5
+  RETRY=$((RETRY + 1))
+done
+
+if [ $RETRY -eq $MAX_RETRIES ]; then
+  log_error "Traefik pod not found after 2 minutes, continuing anyway"
 else
-  log_error "Traefik not available, continuing anyway"
+  # Now wait for it to be ready
+  if kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=traefik -n kube-system --timeout=1000s >/dev/null 2>&1; then
+    log_success "Traefik Ingress Controller ready"
+  else
+    log_error "Traefik not ready, continuing anyway"
+  fi
 fi

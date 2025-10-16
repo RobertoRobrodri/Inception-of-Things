@@ -21,7 +21,7 @@ echo "Installing k9s"
 apk add k9s
 
 # Create the cluster
-k3d cluster create --agents 1 core -p "8080:8888@loadbalancer" # expose the loadbalancer port 8080 to 8888 to access the dashboard
+k3d cluster create --agents 1 core -p "8888:80@loadbalancer" # expose localhost:8888 to traefik port 80
 
 # Create the namespaces
 kubectl create namespace dev

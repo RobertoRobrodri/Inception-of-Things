@@ -4,7 +4,7 @@ set -euo pipefail
 # Load logging functions
 . "$(dirname "$0")/logging.sh"
 
-log_header "40" "Installing GitLab (Ordered Deployment)"
+log_header "40" "Installing GitLab (Phased Deployment for Low Memory)"
 
 # Namespace
 log_info "Creating gitlab namespace"
@@ -15,207 +15,214 @@ log_info "Adding GitLab Helm repository"
 helm repo add gitlab https://charts.gitlab.io/ >/dev/null 2>&1 || true
 helm repo update >/dev/null 2>&1
 
-sleep 30
+sleep 10
 
-# FASE 1: Desplegar solo infraestructura base (PostgreSQL, Redis, MinIO)
-log_header "41" "Phase 1: Base Infrastructure (PostgreSQL, Redis, MinIO)"
+# =============================================================================
+# FASE 1: INFRASTRUCTURE ONLY (PostgreSQL, Redis, MinIO)
+# =============================================================================
+log_header "41" "Phase 1: Infrastructure (PostgreSQL, Redis, MinIO)"
 log_info "Deploying only database and storage components"
+log_info "This minimizes memory usage during initial setup"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set global.webservice.enabled=false \
-  --set global.sidekiq.enabled=false \
-  --set global.gitaly.enabled=false \
-  --set global.gitlab-shell.enabled=false \
-  --set global.migrations.enabled=false \
-  --set registry.enabled=false \
-  --timeout 10m >/dev/null 2>&1
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=0 \
+  --set gitlab.webservice.maxReplicas=0 \
+  --set gitlab.sidekiq.minReplicas=0 \
+  --set gitlab.sidekiq.maxReplicas=0 \
+  --set gitlab.gitaly.replicas=0 \
+  --set gitlab.gitlab-shell.minReplicas=0 \
+  --set gitlab.gitlab-shell.maxReplicas=0 \
+  --set registry.hpa.minReplicas=0 \
+  --set registry.hpa.maxReplicas=0 \
+  --set gitlab.migrations.enabled=false \
+  --timeout 10m \
+  --wait >/dev/null 2>&1
 
 log_success "Phase 1 completed: Infrastructure ready"
 
-# Esperar a que PostgreSQL esté listo
-log_info "Waiting for PostgreSQL to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=postgresql -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "PostgreSQL check timeout, continuing..."
+# Wait for infrastructure to stabilize
+log_info "Waiting for PostgreSQL to be ready..."
+kubectl wait --for=condition=ready pod -l app=postgresql -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "PostgreSQL timeout, continuing..."
 
-# Esperar a que Redis esté listo
-log_info "Waiting for Redis to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=redis -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Redis check timeout, continuing..."
+log_info "Waiting for Redis to be ready..."
+kubectl wait --for=condition=ready pod -l app=redis -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Redis timeout, continuing..."
 
-# Esperar a que MinIO esté listo
-log_info "Waiting for MinIO to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=minio -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "MinIO check timeout, continuing..."
+log_info "Waiting for MinIO to be ready..."
+kubectl wait --for=condition=ready pod -l app=minio -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "MinIO timeout, continuing..."
 
-log_success "Infrastructure components are operational"
-sleep 10
+log_success "Infrastructure components operational"
+sleep 30
 
-# FASE 2: Desplegar Gitaly y Migrations
-log_header "42" "Phase 2: Gitaly and Database Migrations"
-log_info "Deploying Gitaly and running migrations"
+# =============================================================================
+# FASE 2: GITALY (Git Repository Storage)
+# =============================================================================
+log_header "42" "Phase 2: Gitaly (Git Storage)"
+log_info "Deploying Gitaly for Git repository storage"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set global.webservice.enabled=false \
-  --set global.sidekiq.enabled=false \
-  --set global.gitlab-shell.enabled=false \
-  --set registry.enabled=false \
-  --timeout 15m \
-  --wait-for-jobs >/dev/null 2>&1
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=0 \
+  --set gitlab.webservice.maxReplicas=0 \
+  --set gitlab.sidekiq.minReplicas=0 \
+  --set gitlab.sidekiq.maxReplicas=0 \
+  --set gitlab.gitaly.replicas=1 \
+  --set gitlab.gitlab-shell.minReplicas=0 \
+  --set gitlab.gitlab-shell.maxReplicas=0 \
+  --set registry.hpa.minReplicas=0 \
+  --set registry.hpa.maxReplicas=0 \
+  --set gitlab.migrations.enabled=false \
+  --timeout 10m \
+  --wait >/dev/null 2>&1
 
-log_success "Phase 2 completed: Gitaly and migrations ready"
+log_success "Phase 2 completed: Gitaly deployed"
 
-# Esperar a que Gitaly esté listo
-log_info "Waiting for Gitaly to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=gitaly -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Gitaly check timeout, continuing..."
+log_info "Waiting for Gitaly to be ready..."
+kubectl wait --for=condition=ready pod -l app=gitaly -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Gitaly timeout, continuing..."
 
 log_success "Gitaly operational"
-sleep 10
+sleep 20
 
-# FASE 3: Desplegar Sidekiq (background jobs)
-log_header "43" "Phase 3: Sidekiq (Background Workers)"
-log_info "Deploying Sidekiq workers"
-
-helm upgrade --install gitlab gitlab/gitlab \
-  -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set global.webservice.enabled=false \
-  --set global.gitlab-shell.enabled=false \
-  --set registry.enabled=false \
-  --timeout 15m >/dev/null 2>&1
-
-log_success "Phase 3 completed: Sidekiq deployed"
-
-# Esperar a que Sidekiq esté listo
-log_info "Waiting for Sidekiq to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=sidekiq -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Sidekiq check timeout, continuing..."
-
-log_success "Sidekiq operational"
-sleep 10
-
-# FASE 4: Desplegar GitLab Shell
-log_header "44" "Phase 4: GitLab Shell"
-log_info "Deploying GitLab Shell"
+# =============================================================================
+# FASE 3: MIGRATIONS (Database Setup)
+# =============================================================================
+log_header "43" "Phase 3: Database Migrations"
+log_info "Running database migrations"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set global.webservice.enabled=false \
-  --set registry.enabled=false \
-  --timeout 10m >/dev/null 2>&1
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=0 \
+  --set gitlab.webservice.maxReplicas=0 \
+  --set gitlab.sidekiq.minReplicas=0 \
+  --set gitlab.sidekiq.maxReplicas=0 \
+  --set gitlab.gitaly.replicas=1 \
+  --set gitlab.gitlab-shell.minReplicas=0 \
+  --set gitlab.gitlab-shell.maxReplicas=0 \
+  --set registry.hpa.minReplicas=0 \
+  --set registry.hpa.maxReplicas=0 \
+  --set gitlab.migrations.enabled=true \
+  --timeout 15m \
+  --wait \
+  --wait-for-jobs >/dev/null 2>&1
 
-log_success "Phase 4 completed: GitLab Shell deployed"
+log_success "Phase 3 completed: Migrations finished"
+sleep 20
 
-# Esperar a que GitLab Shell esté listo
-log_info "Waiting for GitLab Shell to be ready (up to 10 min)..."
-kubectl wait --for=condition=ready pod -l app=gitlab-shell -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "GitLab Shell check timeout, continuing..."
+# =============================================================================
+# FASE 4: SIDEKIQ + GITLAB SHELL (Background Workers)
+# =============================================================================
+log_header "44" "Phase 4: Sidekiq and GitLab Shell"
+log_info "Deploying background workers and SSH gateway"
 
-log_success "GitLab Shell operational"
-sleep 10
+helm upgrade --install gitlab gitlab/gitlab \
+  -n gitlab \
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=0 \
+  --set gitlab.webservice.maxReplicas=0 \
+  --set gitlab.sidekiq.minReplicas=1 \
+  --set gitlab.sidekiq.maxReplicas=1 \
+  --set gitlab.gitaly.replicas=1 \
+  --set gitlab.gitlab-shell.minReplicas=1 \
+  --set gitlab.gitlab-shell.maxReplicas=1 \
+  --set registry.hpa.minReplicas=0 \
+  --set registry.hpa.maxReplicas=0 \
+  --timeout 15m \
+  --wait >/dev/null 2>&1
 
-# FASE 5: Desplegar Webservice (el más pesado)
+log_success "Phase 4 completed: Sidekiq and GitLab Shell deployed"
+
+log_info "Waiting for Sidekiq to be ready..."
+kubectl wait --for=condition=ready pod -l app=sidekiq -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Sidekiq timeout, continuing..."
+
+log_info "Waiting for GitLab Shell to be ready..."
+kubectl wait --for=condition=ready pod -l app=gitlab-shell -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "GitLab Shell timeout, continuing..."
+
+log_success "Background workers operational"
+sleep 20
+
+# =============================================================================
+# FASE 5: WEBSERVICE (Main Application - Most Memory Intensive)
+# =============================================================================
 log_header "45" "Phase 5: Webservice (Main Application)"
-log_info "Deploying GitLab Webservice (this is the most resource-intensive component)"
+log_info "Deploying GitLab Webservice - this is the most resource-intensive component"
+log_warning "This phase may take 10-15 minutes"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set registry.enabled=false \
-  --timeout 20m >/dev/null 2>&1
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=1 \
+  --set gitlab.webservice.maxReplicas=1 \
+  --set gitlab.sidekiq.minReplicas=1 \
+  --set gitlab.sidekiq.maxReplicas=1 \
+  --set gitlab.gitaly.replicas=1 \
+  --set gitlab.gitlab-shell.minReplicas=1 \
+  --set gitlab.gitlab-shell.maxReplicas=1 \
+  --set registry.hpa.minReplicas=0 \
+  --set registry.hpa.maxReplicas=0 \
+  --timeout 20m \
+  --wait >/dev/null 2>&1
 
 log_success "Phase 5 completed: Webservice deployed"
 
-# Esperar a que Webservice esté listo
-log_info "Waiting for GitLab webservice to be operational (up to 20 min)..."
-if kubectl -n gitlab rollout status deploy/gitlab-webservice-default --timeout=1200s >/dev/null 2>&1; then
+log_info "Waiting for GitLab webservice to be operational (up to 15 min)..."
+if kubectl -n gitlab rollout status deploy/gitlab-webservice-default --timeout=900s >/dev/null 2>&1; then
   log_success "GitLab webservice operational"
 else
-  log_warning "GitLab webservice did not respond within expected time, but may be working"
+  log_warning "GitLab webservice did not respond within expected time, checking status..."
 fi
 
-sleep 10
+sleep 20
 
-# FASE 6: Desplegar Registry (opcional)
-log_header "46" "Phase 6: Container Registry (Final Component)"
+# =============================================================================
+# FASE 6: REGISTRY (Optional - Container Registry)
+# =============================================================================
+log_header "46" "Phase 6: Container Registry (Optional)"
 log_info "Deploying Container Registry"
+log_info "If memory is tight, you can skip this by pressing Ctrl+C"
+sleep 5
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
-  --set global.hosts.domain=localhost \
-  --set global.hosts.externalIP=0.0.0.0 \
-  --set global.hosts.https=false \
-  --set gitlab.migrations.restartPolicy=OnFailure \
-  --set gitlab.migrations.backoffLimit=100000 \
-  --set global.deployment.restartPolicy=Always \
-  --set global.pod.restartPolicy=Always \
-  --set gitlab.webservice.deployment.restartPolicy=Always \
-  --set gitlab.sidekiq.deployment.restartPolicy=Always \
-  --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --wait \
-  --timeout 30m \
-  --wait-for-jobs >/dev/null 2>&1
+  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  --set gitlab.webservice.minReplicas=1 \
+  --set gitlab.webservice.maxReplicas=1 \
+  --set gitlab.sidekiq.minReplicas=1 \
+  --set gitlab.sidekiq.maxReplicas=1 \
+  --set gitlab.gitaly.replicas=1 \
+  --set gitlab.gitlab-shell.minReplicas=1 \
+  --set gitlab.gitlab-shell.maxReplicas=1 \
+  --set registry.hpa.minReplicas=1 \
+  --set registry.hpa.maxReplicas=1 \
+  --timeout 10m \
+  --wait >/dev/null 2>&1 || log_warning "Registry deployment had issues, but GitLab core should work"
 
 log_success "GitLab fully deployed (all components)"
 
-# Credentials and access
-GITLAB_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -n gitlab -o jsonpath="{.data.password}" | base64 -d 2>/dev/null || echo "ERROR_GETTING_PASSWORD")
+# =============================================================================
+# VERIFICATION AND CREDENTIALS
+# =============================================================================
+log_header "47" "Deployment Verification"
+
+log_info "Checking pod status..."
+kubectl get pods -n gitlab
+
+log_info "Checking resource usage..."
+kubectl top nodes 2>/dev/null || log_warning "Metrics not available"
+kubectl top pods -n gitlab 2>/dev/null || log_warning "Pod metrics not available"
+
+# Get password
+GITLAB_PASSWORD=$(kubectl get secret gitlab-gitlab-initial-root-password -n gitlab -o jsonpath="{.data.password}" 2>/dev/null | base64 -d 2>/dev/null || echo "ERROR_GETTING_PASSWORD")
 
 echo
-echo "--------------------------------------------"
-echo "            GitLab Access Details           "
-echo "--------------------------------------------"
-echo "  URL (from VM):  http://localhost:8082     "
-echo "  Username:       admin                     "
-echo "  Password:       $GITLAB_PASSWORD          "
-echo "--------------------------------------------"
+echo "============================================"
+echo "       GitLab Deployment Complete!         "
+echo "============================================"
+echo "  URL (from VM):  http://localhost:8082    "
+echo "  Username:       root                     "
+echo "  Password:       $GITLAB_PASSWORD         "
+echo "============================================"
+echo
+log_success "GitLab installation completed successfully"

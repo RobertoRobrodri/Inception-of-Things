@@ -8,14 +8,15 @@ log_header "10" "Creating k3d cluster"
 
 CLUSTER="iot-cluster"
 
-# Create k3d cluster with Traefik
-log_info "Creating ${CLUSTER} cluster with Traefik Ingress Controller"
+# Create k3d cluster with Traefik and 1 agent (to save memory)
+log_info "Creating ${CLUSTER} cluster with Traefik Ingress Controller and 1 agent"
 if k3d cluster list | grep -q "^${CLUSTER}\b"; then
   log_info "Cluster ${CLUSTER} already exists, skipping creation"
 else
   k3d cluster create "${CLUSTER}" \
+    --agents 1 \
     --k3s-arg "--disable=servicelb@server:0" >/dev/null 2>&1
-  log_success "k3d cluster created successfully"
+  log_success "k3d cluster created successfully with 1 agent node"
 fi
 
 # Wait for API to respond

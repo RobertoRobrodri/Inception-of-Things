@@ -1,0 +1,119 @@
+# GitLab configuration optimized for low memory (6GB RAM)
+# Based on minikube-minimum but with aggressive resource limits
+
+global:
+  ingress:
+    configureCertmanager: false
+    class: "traefik"
+  hosts:
+    domain: localhost
+    externalIP: 0.0.0.0
+    https: false
+  rails:
+    bootsnap:
+      enabled: false
+
+# Don't use certmanager
+certmanager:
+  install: false
+
+# Don't use nginx-ingress (using Traefik)
+nginx-ingress:
+  enabled: false
+
+# Disable Prometheus (saves ~500MB)
+prometheus:
+  install: false
+
+# Disable GitLab Runner (saves ~200MB)
+gitlab-runner:
+  install: false
+
+# Minimal replicas
+gitlab:
+  webservice:
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        memory: 400Mi
+        cpu: 200m
+      limits:
+        memory: 1200Mi
+        cpu: 1000m
+    workerProcesses: 2
+
+  sidekiq:
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 800Mi
+        cpu: 500m
+
+  gitlab-shell:
+    minReplicas: 1
+    maxReplicas: 1
+    resources:
+      requests:
+        memory: 50Mi
+        cpu: 50m
+      limits:
+        memory: 100Mi
+        cpu: 200m
+
+  gitaly:
+    resources:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 600Mi
+        cpu: 500m
+
+# Registry with minimal resources
+registry:
+  hpa:
+    minReplicas: 1
+    maxReplicas: 1
+  resources:
+    requests:
+      memory: 50Mi
+      cpu: 50m
+    limits:
+      memory: 200Mi
+      cpu: 200m
+
+# PostgreSQL with reduced resources
+postgresql:
+  resources:
+    requests:
+      memory: 200Mi
+      cpu: 100m
+    limits:
+      memory: 500Mi
+      cpu: 500m
+
+# Redis with minimal resources
+redis:
+  master:
+    resources:
+      requests:
+        memory: 100Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+
+# MinIO with minimal resources
+minio:
+  resources:
+    requests:
+      memory: 100Mi
+      cpu: 50m
+    limits:
+      memory: 300Mi
+      cpu: 200m

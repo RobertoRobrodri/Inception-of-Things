@@ -5,10 +5,10 @@ set -euo pipefail
 . "$(dirname "$0")/logging.sh"
 
 sh ./scripts/00_requirements.sh
-sh ./scripts/10_k3d_cluster.sh  
+sh ./scripts/10_k3d_cluster.sh
 sh ./scripts/20_helm.sh
 sh ./scripts/30_argocd.sh
-sh ./scripts/40_gitlab.sh
+sh ./scripts/41_gitlab_ordered.sh
 sh ./scripts/50_app_chart.sh
 sh ./scripts/60_port_forward.sh
 

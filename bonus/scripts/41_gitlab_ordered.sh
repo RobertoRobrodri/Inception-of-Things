@@ -34,11 +34,11 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set gitlab.webservice.deployment.restartPolicy=Always \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
   --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set gitlab.webservice.enabled=false \
-  --set gitlab.sidekiq.enabled=false \
-  --set gitlab.gitaly.enabled=false \
-  --set gitlab.gitlab-shell.enabled=false \
-  --set gitlab.migrations.enabled=false \
+  --set global.webservice.enabled=false \
+  --set global.sidekiq.enabled=false \
+  --set global.gitaly.enabled=false \
+  --set global.gitlab-shell.enabled=false \
+  --set global.migrations.enabled=false \
   --set registry.enabled=false \
   --timeout 10m >/dev/null 2>&1
 
@@ -76,9 +76,9 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set gitlab.webservice.deployment.restartPolicy=Always \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
   --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set gitlab.webservice.enabled=false \
-  --set gitlab.sidekiq.enabled=false \
-  --set gitlab.gitlab-shell.enabled=false \
+  --set global.webservice.enabled=false \
+  --set global.sidekiq.enabled=false \
+  --set global.gitlab-shell.enabled=false \
   --set registry.enabled=false \
   --timeout 15m \
   --wait-for-jobs >/dev/null 2>&1
@@ -109,8 +109,8 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set gitlab.webservice.deployment.restartPolicy=Always \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
   --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set gitlab.webservice.enabled=false \
-  --set gitlab.gitlab-shell.enabled=false \
+  --set global.webservice.enabled=false \
+  --set global.gitlab-shell.enabled=false \
   --set registry.enabled=false \
   --timeout 15m >/dev/null 2>&1
 
@@ -140,7 +140,7 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set gitlab.webservice.deployment.restartPolicy=Always \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
   --set gitlab.gitaly.deployment.restartPolicy=Always \
-  --set gitlab.webservice.enabled=false \
+  --set global.webservice.enabled=false \
   --set registry.enabled=false \
   --timeout 10m >/dev/null 2>&1
 

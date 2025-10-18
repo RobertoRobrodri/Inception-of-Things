@@ -17,13 +17,19 @@ helm repo update >/dev/null 2>&1
 
 sleep 30
 
-# Low memory configuration optimized for 6GB RAM with aggressive resource limits
-log_info "Deploying GitLab with Helm (low memory mode)"
-log_info "Using custom values with aggressive resource limits for 6GB RAM"
+# Minimal configuration optimized for k3d with global automatic retries
+log_info "Deploying GitLab with Helm"
+log_info "Using k3d-optimized config with restart policies"
 
+# Minimal configuration optimized for k3d with global automatic retries
+# https://docs.gitlab.com/charts/installation/deployment.html
+#	https://gitlab.com/gitlab-org/charts/gitlab/-/tree/master/examples?ref_type=heads
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.migrations.restartPolicy=OnFailure \
   --set gitlab.migrations.backoffLimit=100000 \
   --set global.deployment.restartPolicy=Always \
@@ -32,7 +38,7 @@ helm upgrade --install gitlab gitlab/gitlab \
   --set gitlab.sidekiq.deployment.restartPolicy=Always \
   --set gitlab.gitaly.deployment.restartPolicy=Always \
   --wait \
-  --timeout 45m \
+  --timeout 30m \
   --wait-for-jobs >/dev/null 2>&1
 
 log_success "GitLab helm chart deployed"

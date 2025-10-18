@@ -1,5 +1,5 @@
 # GitLab configuration optimized for low memory (6GB RAM)
-# Based on minikube-minimum but with aggressive resource limits
+# Based on minikube-minimum with aggressive resource limits
 
 global:
   ingress:
@@ -13,9 +13,8 @@ global:
     bootsnap:
       enabled: false
 
-# Don't use certmanager
-certmanager:
-  install: false
+# Don't use certmanager, we'll self-sign
+installCertmanager: false
 
 # Don't use nginx-ingress (using Traefik)
 nginx-ingress:
@@ -29,7 +28,7 @@ prometheus:
 gitlab-runner:
   install: false
 
-# Minimal replicas
+# Minimal replicas with resource limits
 gitlab:
   webservice:
     minReplicas: 1

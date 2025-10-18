@@ -92,7 +92,10 @@ log_info "Memory usage will be ~2-2.5GB in this phase"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.webservice.enabled=false \
   --set gitlab.sidekiq.enabled=false \
   --set gitlab.gitlab-shell.enabled=false \
@@ -111,7 +114,7 @@ log_info "Waiting for Redis..."
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=redis -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Redis timeout, continuing..."
 
 log_info "Waiting for MinIO..."
-kubectl wait --for=condition=ready pod -l app=minio -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "MinIO timeout, continuing..."
+kubectl wait --for=condition=ready pod -l app=minio,component=app -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "MinIO timeout, continuing..."
 
 log_info "Waiting for Gitaly..."
 kubectl wait --for=condition=ready pod -l app=gitaly -n gitlab --timeout=600s >/dev/null 2>&1 || log_warning "Gitaly timeout, continuing..."
@@ -132,7 +135,10 @@ log_info "Running database migrations (this may take 10-15 minutes)"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.webservice.enabled=false \
   --set gitlab.sidekiq.enabled=false \
   --set gitlab.gitlab-shell.enabled=false \
@@ -158,7 +164,10 @@ log_info "Deploying background workers and SSH gateway"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.webservice.enabled=false \
   --set gitlab.sidekiq.enabled=true \
   --set gitlab.gitlab-shell.enabled=true \
@@ -191,7 +200,10 @@ log_warning "This phase may take 10-15 minutes"
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.webservice.enabled=true \
   --set gitlab.sidekiq.enabled=true \
   --set gitlab.gitlab-shell.enabled=true \
@@ -225,7 +237,10 @@ sleep 15
 
 helm upgrade --install gitlab gitlab/gitlab \
   -n gitlab \
-  -f /shared/confs/helm-values/gitlab-low-memory.yaml \
+  -f https://gitlab.com/gitlab-org/charts/gitlab/raw/master/examples/values-minikube-minimum.yaml \
+  --set global.hosts.domain=localhost \
+  --set global.hosts.externalIP=0.0.0.0 \
+  --set global.hosts.https=false \
   --set gitlab.webservice.enabled=true \
   --set gitlab.sidekiq.enabled=true \
   --set gitlab.gitlab-shell.enabled=true \

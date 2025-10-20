@@ -61,6 +61,11 @@ sudo kubectl -n argocd patch secret argocd-secret \
     "admin.passwordMtime": "'$(date +%FT%T%Z)'"
   }}'
 
+# Configure ArgoCD to run in insecure mode (for HTTP access via Ingress)
+kubectl patch configmap argocd-cmd-params-cm -n argocd --type merge -p '{"data":{"server.insecure":"true"}}'
+kubectl rollout restart deployment argocd-server -n argocd
+kubectl wait --for=condition=Ready pods -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+
 # Apply ArgoCD ingress
 kubectl apply -f /vagrant_shared/deployments/argocd-ingress.yml
 

@@ -4,7 +4,8 @@ metadata:
   name: argocd-server-ingress
   namespace: argocd
   annotations:
-    traefik.ingress.kubernetes.io/router.tls: "false"
+    ingress.kubernetes.io/ssl-passthrough: "true"
+    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
   ingressClassName: traefik
   rules:
@@ -17,4 +18,4 @@ spec:
           service:
             name: argocd-server
             port:
-              number: 80
+              number: 443

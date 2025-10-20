@@ -21,7 +21,7 @@ echo "Installing k9s"
 apk add k9s
 
 # Create the cluster
-k3d cluster create --agents 1 core -p "8888:80@loadbalancer" # expose localhost:8888 to traefik port 80
+k3d cluster create core -p "8888:80@loadbalancer" # expose localhost:8888 to traefik port 80
 
 # Create the namespaces
 kubectl create namespace dev
@@ -61,6 +61,9 @@ sudo kubectl -n argocd patch secret argocd-secret \
     "admin.passwordMtime": "'$(date +%FT%T%Z)'"
   }}'
 
+# Apply ArgoCD ingress
+kubectl apply -f /vagrant_shared/deployments/argocd-ingress.yml
+
 # Apply ArgoCD app config
 kubectl apply -f /vagrant_shared/deployments/argo.yml
 
@@ -78,4 +81,6 @@ done
 echo "Deployment created, waiting for pods to be ready..."
 kubectl wait --for=condition=Ready pods -l app=app -n dev --timeout=1800s
 
-echo "Setup complete! Access the app at http://app.local:8888"
+echo "Setup complete!"
+echo "App: http://app.local:8888"
+echo "ArgoCD UI: http://argocd.local:8888 (admin / holasoyadmin)"

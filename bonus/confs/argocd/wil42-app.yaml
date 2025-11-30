@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: "http://gitlab-webservice-default.gitlab.svc.cluster.local:8181/root/inception-of-things.git"
-    targetRevision: lvarela/bonus
+    targetRevision: master
     path: bonus/confs/charts/wil42
     helm:
       valueFiles:

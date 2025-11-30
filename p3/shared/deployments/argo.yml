@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: 'https://github.com/RobertoRobrodri/Inception-of-Things.git'
-    targetRevision: lvarela/bonus
+    targetRevision: master
     path: p3/shared/deployments/app
   destination:
     server: 'https://kubernetes.default.svc'

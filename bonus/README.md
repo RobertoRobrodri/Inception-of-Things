@@ -85,7 +85,7 @@ vagrant ssh -c "kubectl get secret gitlab-gitlab-initial-root-password -n gitlab
 # Add remote and push
 git remote remove origin  # If exists
 git remote add gitlab http://root:PASSWORD@localhost:18082/root/inception-of-things.git
-git push gitlab lvarela/bonus
+git push gitlab
 ```
 
 ### 3. Access services
@@ -100,7 +100,7 @@ git push gitlab lvarela/bonus
 1. **ArgoCD**: Verify that `wil42` application appears and syncs
 2. **Changes**: Modify tag in the chart and push to see GitOps in action  
 3. **Port-forwards**: Remain active automatically even if the app is redeployed
-4. **Branch**: Make sure you're working on the `lvarela/bonus` branch
+4. **Branch**: Make sure you're working on the `master` branch
 
 ## DevOps Flow
 
@@ -112,7 +112,7 @@ git push gitlab lvarela/bonus
 
 ### Change application version:
 1. Modify `image.tag` in `confs/charts/wil42/values.yaml`
-2. Push to internal GitLab on `lvarela/bonus` branch
+2. Push to internal GitLab on `master` branch
 3. Wait 3 minutes or do manual sync in ArgoCD
 4. See the new version deployed automatically
 

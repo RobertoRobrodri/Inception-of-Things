@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
   config.vm.network "forwarded_port", guest: 8888, host: 8888
 
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = 6144
+    vb.memory = 4096
     vb.cpus   = 6
 
     vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]

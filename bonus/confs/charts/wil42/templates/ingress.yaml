@@ -4,8 +4,6 @@ metadata:
   name: wil42
   labels:
     app: wil42
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
 spec:
   rules:
   - host: "wil42.localhost"

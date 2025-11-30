@@ -27,13 +27,4 @@ kubectl create namespace dev >/dev/null 2>&1 || log_info "Namespace dev already 
 log_info "Deploying ArgoCD Application"
 kubectl apply -f "${APP_FILE}" >/dev/null 2>&1
 log_success "Application wil42 created in ArgoCD"
-
-# Wait for Application resource to be created
-log_info "Waiting for ArgoCD to process the Application..."
-if kubectl wait --for=condition=Ready application/wil42 -n argocd --timeout=1000s >/dev/null 2>&1; then
-  log_success "ArgoCD Application is ready"
-else
-  log_info "Application created, but sync may be pending (repo needs to be uploaded to GitLab)"
-fi
-
 log_info "ArgoCD will detect changes every 3 minutes or you can do manual sync"

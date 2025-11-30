@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wil42
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   selector:
     matchLabels:

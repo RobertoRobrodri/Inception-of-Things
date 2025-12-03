@@ -1,60 +1,119 @@
 Vagrant.configure("2") do |config|
 
-  config.vm.box = "ubuntu/focal64"
+  config.vm.box = "debian/bookworm64"
+
+  # Carpetas compartidas - montar p1, p2 y p3 dentro de /IoT en la VM
+  config.vm.synced_folder "./p1", "/IoT/p1", type: "virtualbox", create: true
+  config.vm.synced_folder "./p2", "/IoT/p2", type: "virtualbox", create: true
+  config.vm.synced_folder "./p3", "/IoT/p3", type: "virtualbox", create: true
+
+  # Port forwarding
+  config.vm.network "forwarded_port", guest: 8888, host: 8888
 
   config.vm.provider "virtualbox" do |vb|
-    vb.gui    = true
-    vb.memory = 10240
+    vb.memory = 4096
     vb.cpus   = 6
 
-    vb.customize ["modifyvm", :id, "--vram", "128"]
     vb.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
-    vb.customize ["modifyvm", :id, "--hwvirtex", "on"] 
+    vb.customize ["modifyvm", :id, "--hwvirtex", "on"]
     vb.customize ["modifyvm", :id, "--vtxvpid", "on"]
     vb.customize ["modifyvm", :id, "--vtxux", "on"]
+
+
+
+    
     vb.customize ["modifyvm", :id, "--pae", "on"]
-    vb.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
-    vb.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
 
     vb.name = "debian-host-nested"
   end
 
-  # Install a desktop environment (e.g., GNOME)
   config.vm.provision "shell", inline: <<-SHELL
-    # Arreglar dpkg si está roto
-    dpkg --configure -a
+    # Configurar entorno no interactivo
+    export DEBIAN_FRONTEND=noninteractive
+
+    # Actualizar sistema
     apt-get update
-    apt-get install -y ubuntu-desktop
+    apt-get upgrade -y
 
-    # Instalamos dependencias básicas
-    sudo apt-get install -y build-essential dkms linux-headers-$(uname -r) apt-transport-https ca-certificates curl software-properties-common
+    # Instalar dependencias básicas primero
+    apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
+      curl \
+      wget \
+      git \
+      vim \
+      gnupg \
+      software-properties-common
 
-    # Instalamos VirtualBox (forzar virtualización anidada)
-    sudo apt-get install -y virtualbox virtualbox-ext-pack
+    # Actualizar kernel si es necesario
+    apt-get install -y linux-image-amd64 linux-headers-amd64
 
-    # Instalamos Vagrant
-    curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-    sudo apt-get update -y
-    sudo apt-get install -y vagrant vagrant-hostmanager
+    # Instalar build-essential y dkms después de tener los headers
+    apt-get install -y build-essential dkms
 
-    # Instalamos herramientas adicionales
-    sudo apt-get install -y git vim unzip wget firefox
+    # Añadir clave GPG de VirtualBox
+    wget -O- https://www.virtualbox.org/download/oracle_vbox_2016.asc | gpg --dearmor --yes --output /usr/share/keyrings/oracle-virtualbox-2016.gpg
 
-    # Guest Additions (ESENCIAL para clipboard y drag&drop) 
-    sudo apt-get install -y virtualbox-guest-utils virtualbox-guest-x11 virtualbox-guest-dkms
+    # Añadir repositorio de VirtualBox
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/oracle-virtualbox-2016.gpg] https://download.virtualbox.org/virtualbox/debian bookworm contrib" | tee /etc/apt/sources.list.d/virtualbox.list
 
-    # Simple: VirtualBox + usuario en grupo
-    sudo usermod -a -G vboxusers vagrant
-    
-    # Instalar plugin hostmanager (ignorar si falla)
-    sudo -u vagrant vagrant plugin install vagrant-hostmanager || echo "Plugin hostmanager falló - continuando..."
+    # Instalar VirtualBox
+    apt-get update
+    apt-get install -y virtualbox-7.0
 
-    # Cambiar teclado a español
-    sudo localectl set-keymap es
-    sudo loadkeys es
-    localectl status
+    # Verificar que los headers estén instalados correctamente
+    KERNEL_VERSION=$(uname -r)
+    echo "Kernel actual: ${KERNEL_VERSION}"
 
-		sudo reboot
+    if [ ! -d "/lib/modules/${KERNEL_VERSION}/build" ]; then
+      echo "Headers del kernel no encontrados, instalando..."
+      apt-get install -y linux-headers-${KERNEL_VERSION}
+    fi
+
+    # Compilar módulos de VirtualBox
+    echo "======================================="
+    echo "Compilando módulos de VirtualBox..."
+    echo "======================================="
+    /sbin/vboxconfig || {
+      echo "Error en vboxconfig, intentando de nuevo..."
+      apt-get install -y --reinstall linux-headers-${KERNEL_VERSION}
+      /sbin/vboxconfig
+    }
+
+    # Añadir usuario vagrant al grupo vboxusers
+    usermod -aG vboxusers vagrant
+
+    # Instalar Vagrant
+    VAGRANT_VERSION="2.4.9"
+    wget https://releases.hashicorp.com/vagrant/${VAGRANT_VERSION}/vagrant_${VAGRANT_VERSION}-1_amd64.deb
+    dpkg -i vagrant_${VAGRANT_VERSION}-1_amd64.deb
+    rm vagrant_${VAGRANT_VERSION}-1_amd64.deb
+
+    # Cargar módulos de VirtualBox
+    modprobe vboxdrv && echo "✓ Módulo vboxdrv cargado" || echo "✗ Error cargando vboxdrv"
+    modprobe vboxnetflt && echo "✓ Módulo vboxnetflt cargado" || echo "✗ Error cargando vboxnetflt"
+    modprobe vboxnetadp && echo "✓ Módulo vboxnetadp cargado" || echo "✗ Error cargando vboxnetadp"
+
+    # Verificar instalación
+    echo "======================================="
+    echo "Verificando instalaciones..."
+    echo "======================================="
+    if command -v VBoxManage &> /dev/null; then
+      echo "✓ VirtualBox instalado: $(VBoxManage --version)"
+    else
+      echo "✗ VirtualBox NO disponible"
+    fi
+
+    if command -v vagrant &> /dev/null; then
+      echo "✓ Vagrant instalado: $(vagrant --version)"
+    else
+      echo "✗ Vagrant NO disponible"
+    fi
+    echo "======================================="
+
+    echo "Provisión completada. Es posible que necesites reiniciar la VM para que los módulos de VirtualBox se carguen correctamente."
+    echo "Usa: vagrant reload"
+    sudo reboot
   SHELL
 end
